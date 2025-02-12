@@ -175,7 +175,7 @@ static void deadly_signal(int signum)
 
   ILOG("got signal %d (%s)", signum, signal_name(signum));
 
-  snprintf(IObuff, IOSIZE, "Vim: Caught deadly signal '%s'\r\n", signal_name(signum));
+  snprintf(IObuff, IOSIZE, "Nvim: Caught deadly signal '%s'\n", signal_name(signum));
 
   // Preserve files and exit.
   preserve_exit(IObuff);
@@ -187,8 +187,7 @@ static void on_signal(SignalWatcher *handle, int signum, void *data)
   switch (signum) {
 #ifdef SIGPWR
   case SIGPWR:
-    // Signal of a power failure(eg batteries low), flush the swap files to
-    // be safe
+    // Signal of a power failure (eg batteries low), flush the swap files to be safe
     ml_sync_all(false, false, true);
     break;
 #endif

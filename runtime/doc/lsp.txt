@@ -882,8 +882,9 @@ foldexpr({lnum})                                          *vim.lsp.foldexpr()*
           callback = function(args)
             local client = vim.lsp.get_client_by_id(args.data.client_id)
             if client:supports_method('textDocument/foldingRange') then
-              vim.wo.foldmethod = 'expr'
-              vim.wo.foldexpr = 'v:lua.vim.lsp.foldexpr()'
+              local win = vim.api.nvim_get_current_win()
+              vim.wo[win][0].foldmethod = 'expr'
+              vim.wo[win][0].foldexpr = 'v:lua.vim.lsp.foldexpr()'
             end
           end,
         })
@@ -1445,12 +1446,11 @@ Lua module: vim.lsp.buf                                              *lsp-buf*
                         vim.lsp.buf.definition({ on_list = on_list })
                         vim.lsp.buf.references(nil, { on_list = on_list })
 <
-
-                    If you prefer loclist instead of qflist: >lua
+      • {loclist}?  (`boolean`) Whether to use the |location-list| or the
+                    |quickfix| list in the default handler. >lua
                         vim.lsp.buf.definition({ loclist = true })
-                        vim.lsp.buf.references(nil, { loclist = true })
+                        vim.lsp.buf.references(nil, { loclist = false })
 <
-      • {loclist}?  (`boolean`)
 
 *vim.lsp.LocationOpts*
     Extends: |vim.lsp.ListOpts|
@@ -1553,7 +1553,7 @@ document_highlight()                        *vim.lsp.buf.document_highlight()*
     |hl-LspReferenceWrite|
 
 document_symbol({opts})                        *vim.lsp.buf.document_symbol()*
-    Lists all symbols in the current buffer in the quickfix window.
+    Lists all symbols in the current buffer in the |location-list|.
 
     Parameters: ~
       • {opts}  (`vim.lsp.ListOpts?`) See |vim.lsp.ListOpts|.
@@ -2376,12 +2376,17 @@ stylize_markdown({bufnr}, {contents}, {opts})
     Return: ~
         (`table`) stripped content
 
-symbols_to_items({symbols}, {bufnr})         *vim.lsp.util.symbols_to_items()*
+                                             *vim.lsp.util.symbols_to_items()*
+symbols_to_items({symbols}, {bufnr}, {position_encoding})
     Converts symbols to quickfix list items.
 
     Parameters: ~
-      • {symbols}  (`lsp.DocumentSymbol[]|lsp.SymbolInformation[]`)
-      • {bufnr}    (`integer?`)
+      • {symbols}            (`lsp.DocumentSymbol[]|lsp.SymbolInformation[]`)
+                             list of symbols
+      • {bufnr}              (`integer?`) buffer handle or 0 for current,
+                             defaults to current
+      • {position_encoding}  (`'utf-8'|'utf-16'|'utf-32'?`) default to first
+                             client of buffer
 
     Return: ~
         (`vim.quickfix.entry[]`) See |setqflist()| for the format

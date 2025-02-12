@@ -31,22 +31,24 @@ end
 
 -- No need to do anything if pcall and xpcall are already safe.
 if isCoroutineSafe(pcall) and isCoroutineSafe(xpcall) then
-    copcall = pcall
-    coxpcall = xpcall
+    _G.copcall = pcall
+    _G.coxpcall = xpcall
     return { pcall = pcall, xpcall = xpcall, running = coroutine.running }
 end
 
 -------------------------------------------------------------------------------
 -- Implements xpcall with coroutines
 -------------------------------------------------------------------------------
-local performResume, handleReturnValue
+---@diagnostic disable-next-line
+local performResume
 local oldpcall, oldxpcall = pcall, xpcall
 local pack = table.pack or function(...) return {n = select("#", ...), ...} end
 local unpack = table.unpack or unpack
 local running = coroutine.running
+--- @type table<thread,thread>
 local coromap = setmetatable({}, { __mode = "k" })
 
-function handleReturnValue(err, co, status, ...)
+local function handleReturnValue(err, co, status, ...)
     if not status then
         return false, err(debug.traceback(co, (...)), ...)
     end
@@ -61,11 +63,12 @@ function performResume(err, co, ...)
     return handleReturnValue(err, co, coroutine.resume(co, ...))
 end
 
+--- @diagnostic disable-next-line: unused-vararg
 local function id(trace, ...)
     return trace
 end
 
-function coxpcall(f, err, ...)
+function _G.coxpcall(f, err, ...)
     local current = running()
     if not current then
         if err == id then
@@ -88,6 +91,7 @@ function coxpcall(f, err, ...)
     end
 end
 
+--- @param coro? thread
 local function corunning(coro)
   if coro ~= nil then
     assert(type(coro)=="thread", "Bad argument; expected thread, got: "..type(coro))
@@ -105,7 +109,7 @@ end
 -- Implements pcall with coroutines
 -------------------------------------------------------------------------------
 
-function copcall(f, ...)
+function _G.copcall(f, ...)
     return coxpcall(f, id, ...)
 end
 

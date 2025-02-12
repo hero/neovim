@@ -18,8 +18,6 @@ describe('Signs', function()
       [102] = { foreground = Screen.colors.Brown, background = Screen.colors.Yellow },
       [103] = { background = Screen.colors.Yellow, reverse = true },
       [104] = { reverse = true, foreground = Screen.colors.Grey100, background = Screen.colors.Red },
-      [105] = { bold = true, background = Screen.colors.Red1, foreground = Screen.colors.Gray100 },
-      [106] = { foreground = Screen.colors.Brown, reverse = true },
     }
   end)
 
@@ -125,14 +123,7 @@ describe('Signs', function()
       ]])
       -- Check that 'statuscolumn' correctly applies numhl
       exec('set statuscolumn=%s%=%l\\ ')
-      screen:expect([[
-        {102:>>}{8:  1 }a                                              |
-        {7:  }{8:  2 }{9:b                                              }|
-        {7:  }{13:  3 }c                                              |
-        {101:>>}{13:  4 }{9:^                                               }|
-        {1:~                                                    }|*9
-                                                             |
-      ]])
+      screen:expect_unchanged()
     end)
 
     it('highlights the cursorline sign with culhl', function()
@@ -189,14 +180,7 @@ describe('Signs', function()
 
       -- Check that 'statuscolumn' cursorline/signcolumn highlights are the same (#21726)
       exec('set statuscolumn=%s')
-      screen:expect([[
-        {102:>>}a                                                  |
-        {105:>>}^b                                                  |
-        {102:>>}c                                                  |
-        {106:  }                                                   |
-        {1:~                                                    }|*9
-                                                             |
-      ]])
+      screen:expect_unchanged()
     end)
 
     it('multiple signs #9295', function()
@@ -443,7 +427,7 @@ describe('Signs', function()
       feed('<C-Y>')
       -- number column on virtual lines should be empty
       screen:expect([[
-        {8:    }VIRT LINES                                       |
+        {9:    }VIRT LINES                                       |
         {101: >> }aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|
         {9:    }aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|
         {9:    }aa^a                                              |

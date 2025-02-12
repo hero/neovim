@@ -274,8 +274,10 @@ void input_enqueue_raw(const char *data, size_t size)
   input_write_pos += to_write;
 }
 
-size_t input_enqueue(String keys)
+size_t input_enqueue(uint64_t chan_id, String keys)
 {
+  current_ui = chan_id;
+
   const char *ptr = keys.data;
   const char *end = ptr + keys.size;
 
@@ -403,6 +405,7 @@ static unsigned handle_mouse_event(const char **ptr, uint8_t *buf, unsigned bufs
 
   if (type != KS_EXTRA
       || !((mouse_code >= KE_LEFTMOUSE && mouse_code <= KE_RIGHTRELEASE)
+           || (mouse_code >= KE_X1MOUSE && mouse_code <= KE_X2RELEASE)
            || (mouse_code >= KE_MOUSEDOWN && mouse_code <= KE_MOUSERIGHT)
            || mouse_code == KE_MOUSEMOVE)) {
     return bufsize;

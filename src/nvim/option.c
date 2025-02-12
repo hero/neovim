@@ -980,12 +980,12 @@ static int validate_opt_idx(win_T *win, OptIndex opt_idx, int opt_flags, uint32_
 
   // Skip all options that are not window-local (used when showing
   // an already loaded buffer in a window).
-  if ((opt_flags & OPT_WINONLY) && (opt_idx == kOptInvalid || !option_is_window_local(opt_idx))) {
+  if ((opt_flags & OPT_WINONLY) && !option_is_window_local(opt_idx)) {
     return FAIL;
   }
 
   // Skip all options that are window-local (used for :vimgrep).
-  if ((opt_flags & OPT_NOWIN) && opt_idx != kOptInvalid && option_is_window_local(opt_idx)) {
+  if ((opt_flags & OPT_NOWIN) && option_is_window_local(opt_idx)) {
     return FAIL;
   }
 
@@ -3267,7 +3267,7 @@ bool is_option_hidden(OptIndex opt_idx)
 /// Check if option supports a specific type.
 bool option_has_type(OptIndex opt_idx, OptValType type)
 {
-  return options[opt_idx].type == type;
+  return opt_idx != kOptInvalid && options[opt_idx].type == type;
 }
 
 /// Check if option supports a specific scope.
@@ -4580,6 +4580,8 @@ void *get_varp_from(vimoption_T *p, buf_T *buf, win_T *win)
     return &(win->w_p_cc);
   case kOptDiff:
     return &(win->w_p_diff);
+  case kOptEventignorewin:
+    return &(win->w_p_eiw);
   case kOptFoldcolumn:
     return &(win->w_p_fdc);
   case kOptFoldenable:
@@ -4875,6 +4877,7 @@ void copy_winopt(winopt_T *from, winopt_T *to)
   to->wo_cc = copy_option_val(from->wo_cc);
   to->wo_diff = from->wo_diff;
   to->wo_diff_saved = from->wo_diff_saved;
+  to->wo_eiw = copy_option_val(from->wo_eiw);
   to->wo_cocu = copy_option_val(from->wo_cocu);
   to->wo_cole = from->wo_cole;
   to->wo_fdc = copy_option_val(from->wo_fdc);
@@ -4919,6 +4922,7 @@ static void check_winopt(winopt_T *wop)
   check_string_option(&wop->wo_fde);
   check_string_option(&wop->wo_fdt);
   check_string_option(&wop->wo_fmr);
+  check_string_option(&wop->wo_eiw);
   check_string_option(&wop->wo_scl);
   check_string_option(&wop->wo_rlc);
   check_string_option(&wop->wo_sbr);
@@ -4946,6 +4950,7 @@ void clear_winopt(winopt_T *wop)
   clear_string_option(&wop->wo_fde);
   clear_string_option(&wop->wo_fdt);
   clear_string_option(&wop->wo_fmr);
+  clear_string_option(&wop->wo_eiw);
   clear_string_option(&wop->wo_scl);
   clear_string_option(&wop->wo_rlc);
   clear_string_option(&wop->wo_sbr);
@@ -5226,7 +5231,7 @@ void buf_copy_options(buf_T *buf, int flags)
       // or to a help buffer.
       if (dont_do_help) {
         buf->b_p_isk = save_p_isk;
-        if (p_vts && p_vts != empty_string_option && !buf->b_p_vts_array) {
+        if (p_vts && *p_vts != NUL && !buf->b_p_vts_array) {
           tabstop_set(p_vts, &buf->b_p_vts_array);
         } else {
           buf->b_p_vts_array = NULL;
@@ -5239,7 +5244,7 @@ void buf_copy_options(buf_T *buf, int flags)
         COPY_OPT_SCTX(buf, kBufOptTabstop);
         buf->b_p_vts = xstrdup(p_vts);
         COPY_OPT_SCTX(buf, kBufOptVartabstop);
-        if (p_vts && p_vts != empty_string_option && !buf->b_p_vts_array) {
+        if (p_vts && *p_vts != NUL && !buf->b_p_vts_array) {
           tabstop_set(p_vts, &buf->b_p_vts_array);
         } else {
           buf->b_p_vts_array = NULL;
@@ -5715,6 +5720,7 @@ int ExpandStringSetting(expand_T *xp, regmatch_T *regmatch, int *numMatches, cha
 
   optexpand_T args = {
     .oe_varp = get_varp_scope(&options[expand_option_idx], expand_option_flags),
+    .oe_idx = expand_option_idx,
     .oe_append = expand_option_append,
     .oe_regmatch = regmatch,
     .oe_xp = xp,

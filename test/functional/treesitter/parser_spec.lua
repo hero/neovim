@@ -504,6 +504,15 @@ end]]
     eq({ 0, 0, 0, 13 }, ret)
   end)
 
+  it('can run async parses with string parsers', function()
+    local ret = exec_lua(function()
+      local parser = vim.treesitter.get_string_parser('int foo = 42;', 'c')
+      return { parser:parse(nil, function() end)[1]:root():range() }
+    end)
+
+    eq({ 0, 0, 0, 13 }, ret)
+  end)
+
   it('allows to run queries with string parsers', function()
     local txt = [[
       int foo = 42;
@@ -624,7 +633,7 @@ int x = INT_MAX;
         }, get_ranges())
 
         n.feed('7ggI//<esc>')
-        exec_lua([[parser:parse({6, 7})]])
+        exec_lua([[parser:parse({5, 6})]])
         eq('table', exec_lua('return type(parser:children().c)'))
         eq(2, exec_lua('return #parser:children().c:trees()'))
         eq({

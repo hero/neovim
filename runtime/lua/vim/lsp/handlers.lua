@@ -47,7 +47,7 @@ RSC[ms.dollar_progress] = function(_, params, ctx)
   local value = params.value
 
   if type(value) == 'table' then
-    kind = value.kind
+    kind = value.kind --- @type string
     -- Carry over title of `begin` messages to `report` and `end` messages
     -- So that consumers always have it available, even if they consume a
     -- subset of the full sequence
@@ -231,7 +231,7 @@ end
 ---
 --- The returned function has an optional {config} parameter that accepts |vim.lsp.ListOpts|
 ---
----@param map_result fun(resp, bufnr: integer): table to convert the response
+---@param map_result fun(resp, bufnr: integer, position_encoding: 'utf-8'|'utf-16'|'utf-32'): table to convert the response
 ---@param entity string name of the resource used in a `not found` error message
 ---@param title_fn fun(ctx: lsp.HandlerContext): string Function to call to generate list title
 ---@return lsp.Handler
@@ -244,15 +244,16 @@ local function response_to_list(map_result, entity, title_fn)
     end
     config = config or {}
     local title = title_fn(ctx)
-    local items = map_result(result, ctx.bufnr)
+    local client = assert(vim.lsp.get_client_by_id(ctx.client_id))
+    local items = map_result(result, ctx.bufnr, client.offset_encoding)
 
     local list = { title = title, items = items, context = ctx }
-    if config.loclist then
-      vim.fn.setloclist(0, {}, ' ', list)
-      vim.cmd.lopen()
-    elseif config.on_list then
+    if config.on_list then
       assert(vim.is_callable(config.on_list), 'on_list is not a function')
       config.on_list(list)
+    elseif config.loclist then
+      vim.fn.setloclist(0, {}, ' ', list)
+      vim.cmd.lopen()
     else
       vim.fn.setqflist({}, ' ', list)
       vim.cmd('botright copen')
@@ -583,7 +584,7 @@ NSC['window/showMessage'] = function(_, params, ctx)
     err_message('LSP[', client_name, '] ', message)
   else
     message = ('LSP[%s][%s] %s\n'):format(client_name, protocol.MessageType[message_type], message)
-    api.nvim_echo({ { message } }, true, { err = true })
+    api.nvim_echo({ { message } }, true, {})
   end
   return params
 end

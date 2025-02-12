@@ -254,11 +254,11 @@ describe('ui/ext_messages', function()
         {
           content = {
             { '\n@character     ' },
-            { 'xxx', 26, 150 },
+            { 'xxx', 26, 155 },
             { ' ' },
             { 'links to', 18, 5 },
             { ' Character\n@character.special ' },
-            { 'xxx', 16, 151 },
+            { 'xxx', 16, 156 },
             { ' ' },
             { 'links to', 18, 5 },
             { ' SpecialChar' },
@@ -1259,7 +1259,7 @@ stack traceback:
           content = { { '' } },
           hl_id = 0,
           pos = 0,
-          prompt = 'Type number and <Enter> or click with the mouse (q or empty cancels):',
+          prompt = 'Type number and <Enter> or click with the mouse (q or empty cancels): ',
         },
       },
       messages = {
@@ -1282,7 +1282,7 @@ stack traceback:
           content = { { '1' } },
           hl_id = 0,
           pos = 1,
-          prompt = 'Type number and <Enter> or click with the mouse (q or empty cancels):',
+          prompt = 'Type number and <Enter> or click with the mouse (q or empty cancels): ',
         },
       },
       messages = {
@@ -1302,6 +1302,41 @@ stack traceback:
       ]],
       cmdline = { { abort = false } },
     })
+
+    async_meths.nvim_command("let g:n = inputlist(['input0', 'input1'])")
+    screen:expect({
+      grid = [[
+        ^Hello                    |
+        {1:~                        }|*4
+      ]],
+      cmdline = {
+        {
+          content = { { '' } },
+          hl_id = 0,
+          pos = 0,
+          prompt = 'Type number and <Enter> or click with the mouse (q or empty cancels): ',
+        },
+      },
+      messages = {
+        {
+          content = { { 'input0\ninput1\n' } },
+          history = false,
+          kind = 'list_cmd',
+        },
+      },
+    })
+
+    feed('42<CR>')
+    screen:expect({
+      grid = [[
+        ^Hello                    |
+        {1:~                        }|*4
+      ]],
+      cmdline = { {
+        abort = false,
+      } },
+    })
+    eq(42, eval('g:n'))
   end)
 
   it('supports nvim_echo messages with multiple attrs', function()
@@ -1391,13 +1426,25 @@ stack traceback:
       screen_showmode(...)
       showmode = showmode + 1
     end
+    local s1 = [[
+      ^                         |
+      {1:~                        }|*4
+    ]]
+    screen:expect(s1)
+    eq(showmode, 0)
+    feed('i')
     screen:expect({
-      grid = [[
-        ^                         |
-        {1:~                        }|*4
-      ]],
+      grid = s1,
+      showmode = { { '-- INSERT --', 5, 11 } },
     })
-    eq(showmode, 1)
+    eq(showmode, 2)
+    command('set noshowmode')
+    feed('<Esc>')
+    screen:expect(s1)
+    eq(showmode, 3)
+    feed('i')
+    screen:expect_unchanged()
+    eq(showmode, 3)
   end)
 
   it('emits single message for multiline print())', function()
