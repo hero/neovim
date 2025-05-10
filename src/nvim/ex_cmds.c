@@ -1025,6 +1025,7 @@ void do_bang(int addr_count, exarg_T *eap, bool forceit, bool do_in, bool do_out
   if (addr_count == 0) {                // :!
     // echo the command
     msg_start();
+    msg_ext_set_kind("shell_cmd");
     msg_putchar(':');
     msg_putchar('!');
     msg_outtrans(newcmd, 0, false);
@@ -1470,7 +1471,7 @@ void append_redir(char *const buf, const size_t buflen, const char *const opt,
   }
 }
 
-void print_line_no_prefix(linenr_T lnum, int use_number, bool list)
+void print_line_no_prefix(linenr_T lnum, bool use_number, bool list)
 {
   char numbuf[30];
 
@@ -1483,7 +1484,7 @@ void print_line_no_prefix(linenr_T lnum, int use_number, bool list)
 }
 
 /// Print a text line.  Also in silent mode ("ex -s").
-void print_line(linenr_T lnum, int use_number, bool list)
+void print_line(linenr_T lnum, bool use_number, bool list, bool first)
 {
   bool save_silent = silent_mode;
 
@@ -1492,12 +1493,17 @@ void print_line(linenr_T lnum, int use_number, bool list)
     return;
   }
 
-  msg_start();
   silent_mode = false;
   info_message = true;  // use stdout, not stderr
+  if (first) {
+    msg_start();
+    msg_ext_set_kind("list_cmd");
+  } else if (!save_silent) {
+    msg_putchar('\n');  // don't want trailing newline with regular messaging
+  }
   print_line_no_prefix(lnum, use_number, list);
   if (save_silent) {
-    msg_putchar('\n');
+    msg_putchar('\n');  // batch mode message should always end in newline
     silent_mode = save_silent;
   }
   info_message = false;
@@ -2279,14 +2285,16 @@ int do_ecmd(int fnum, char *ffname, char *sfname, exarg_T *eap, linenr_T newlnum
     if (buf == NULL) {
       goto theend;
     }
-    // autocommands try to edit a file that is going to be removed, abort
-    if (buf_locked(buf)) {
+    // autocommands try to edit a closing buffer, which like splitting, can
+    // result in more windows displaying it; abort
+    if (buf->b_locked_split) {
       // window was split, but not editing the new buffer, reset b_nwindows again
       if (oldwin == NULL
           && curwin->w_buffer != NULL
           && curwin->w_buffer->b_nwindows > 1) {
         curwin->w_buffer->b_nwindows--;
       }
+      emsg(_(e_cannot_switch_to_a_closing_buffer));
       goto theend;
     }
     if (curwin->w_alt_fnum == buf->b_fnum && prev_alt_fnum != 0) {
@@ -2735,6 +2743,9 @@ theend:
   if (bufref_valid(&old_curbuf) && old_curbuf.br_buf->terminal != NULL) {
     terminal_check_size(old_curbuf.br_buf->terminal);
   }
+  if ((!bufref_valid(&old_curbuf) || curbuf != old_curbuf.br_buf) && curbuf->terminal != NULL) {
+    terminal_check_size(curbuf->terminal);
+  }
 
   if (did_inc_redrawing_disabled) {
     RedrawingDisabled--;
@@ -3037,7 +3048,7 @@ void ex_z(exarg_T *eap)
       }
     }
 
-    print_line(i, eap->flags & EXFLAG_NR, eap->flags & EXFLAG_LIST);
+    print_line(i, eap->flags & EXFLAG_NR, eap->flags & EXFLAG_LIST, i == start);
 
     if (minus && i == lnum) {
       msg_putchar('\n');
@@ -4257,7 +4268,7 @@ skip:
       global_need_beginline = true;
     }
     if (subflags.do_print) {
-      print_line(curwin->w_cursor.lnum, subflags.do_number, subflags.do_list);
+      print_line(curwin->w_cursor.lnum, subflags.do_number, subflags.do_list, true);
     }
   } else if (!global_busy) {
     if (got_int) {

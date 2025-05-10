@@ -2259,11 +2259,15 @@ vim.tbl_deep_extend({behavior}, {...})                 *vim.tbl_deep_extend()*
     overwritten instead of merged).
 
     Parameters: ~
-      • {behavior}  (`'error'|'keep'|'force'`) Decides what to do if a key is
-                    found in more than one map:
+      • {behavior}  (`'error'|'keep'|'force'|fun(key:any, prev_value:any?, value:any): any`)
+                    Decides what to do if a key is found in more than one map:
                     • "error": raise an error
                     • "keep": use value from the leftmost map
                     • "force": use value from the rightmost map
+                    • If a function, it receives the current key, the previous
+                      value in the currently merged table (if present), the
+                      current value and should return the value for the given
+                      key in the merged table.
       • {...}       (`table`) Two or more tables
 
     Return: ~
@@ -2276,11 +2280,15 @@ vim.tbl_extend({behavior}, {...})                           *vim.tbl_extend()*
     Merges two or more tables.
 
     Parameters: ~
-      • {behavior}  (`'error'|'keep'|'force'`) Decides what to do if a key is
-                    found in more than one map:
+      • {behavior}  (`'error'|'keep'|'force'|fun(key:any, prev_value:any?, value:any): any`)
+                    Decides what to do if a key is found in more than one map:
                     • "error": raise an error
                     • "keep": use value from the leftmost map
                     • "force": use value from the rightmost map
+                    • If a function, it receives the current key, the previous
+                      value in the currently merged table (if present), the
+                      current value and should return the value for the given
+                      key in the merged table.
       • {...}       (`table`) Two or more tables
 
     Return: ~
@@ -2661,6 +2669,41 @@ vim.ui.select({items}, {opts}, {on_choice})                  *vim.ui.select()*
       • {on_choice}  (`fun(item: T?, idx: integer?)`) Called once the user
                      made a choice. `idx` is the 1-based index of `item`
                      within `items`. `nil` if the user aborted the dialog.
+
+
+==============================================================================
+Lua module: vim._extui                                            *vim._extui*
+
+WARNING: This is an experimental interface intended to replace the message
+grid in the TUI.
+
+To enable the experimental UI (default opts shown): >lua
+    require('vim._extui').enable({
+     enable = true, -- Whether to enable or disable the UI.
+     msg = { -- Options related to the message module.
+       ---@type 'box'|'cmd' Type of window used to place messages, either in the
+       ---cmdline or in a separate message box window with ephemeral messages.
+       pos = 'cmd',
+       box = { -- Options related to the message box window.
+         timeout = 4000, -- Time a message is visible.
+       },
+     },
+    })
+<
+
+There are four separate window types used by this interface:
+• "cmd": The cmdline window; also used for 'showcmd', 'showmode', 'ruler', and
+  messages if 'cmdheight' > 0.
+• "box": The message box window; used for messages when 'cmdheight' == 0.
+• "more": The more-prompt window; used for |:messages| and certain messages
+  that should be shown in full.
+• "prompt": The cmdline prompt window; used for prompt messages that expect
+  user input.
+
+These four windows are assigned the "cmdline", "msgbox", "msgmore" and
+"msgprompt" 'filetype' respectively. Use a |FileType| autocommand to configure
+any local options for these windows and their respective buffers.
+
 
 
 ==============================================================================
@@ -3742,19 +3785,25 @@ vim.regex({re})                                                  *vim.regex()*
 Lua module: vim.secure                                            *vim.secure*
 
 vim.secure.read({path})                                    *vim.secure.read()*
-    Attempt to read the file at {path} prompting the user if the file should
-    be trusted. The user's choice is persisted in a trust database at
+    If {path} is a file: attempt to read the file, prompting the user if the
+    file should be trusted.
+
+    If {path} is a directory: return true if the directory is trusted
+    (non-recursive), prompting the user as necessary.
+
+    The user's choice is persisted in a trust database at
     $XDG_STATE_HOME/nvim/trust.
 
     Attributes: ~
         Since: 0.9.0
 
     Parameters: ~
-      • {path}  (`string`) Path to a file to read.
+      • {path}  (`string`) Path to a file or directory to read.
 
     Return: ~
-        (`string?`) The contents of the given file if it exists and is
-        trusted, or nil otherwise.
+        (`boolean|string?`) If {path} is not trusted or does not exist,
+        returns `nil`. Otherwise, returns the contents of {path} if it is a
+        file, or true if {path} is a directory.
 
     See also: ~
       • |:trust|

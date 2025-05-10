@@ -700,10 +700,12 @@ static void normal_redraw_mode_message(NormalState *s)
   setcursor();
   ui_cursor_shape();                  // show different cursor shape
   ui_flush();
-  if (msg_scroll || emsg_on_display) {
+  if (!ui_has(kUIMessages) && (msg_scroll || emsg_on_display)) {
     os_delay(1003, true);            // wait at least one second
   }
-  os_delay(3003, false);             // wait up to three seconds
+  if (ui_has(kUIMessages)) {
+    os_delay(3003, false);           // wait up to three seconds
+  }
   State = save_State;
 
   msg_scroll = false;
@@ -3498,7 +3500,7 @@ static void nv_ident(cmdarg_T *cap)
     } else if (cmdchar == '#') {
       aux_ptr = (magic_isset() ? "/?.*~[^$\\" : "/?^$\\");
     } else if (tag_cmd) {
-      if (curbuf->b_help) {
+      if (strcmp(curbuf->b_p_ft, "help") == 0) {
         // ":help" handles unescaped argument
         aux_ptr = "";
       } else {

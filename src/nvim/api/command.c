@@ -110,9 +110,9 @@ Dict(cmd) nvim_parse_cmd(String str, Dict(empty) *opts, Arena *arena, Error *err
 
   if (!parse_cmdline(cmdline, &ea, &cmdinfo, &errormsg)) {
     if (errormsg != NULL) {
-      api_set_error(err, kErrorTypeException, "Error while parsing command line: %s", errormsg);
+      api_set_error(err, kErrorTypeException, "Parsing command-line: %s", errormsg);
     } else {
-      api_set_error(err, kErrorTypeException, "Error while parsing command line");
+      api_set_error(err, kErrorTypeException, "Parsing command-line");
     }
     goto end;
   }
@@ -633,6 +633,22 @@ String nvim_cmd(uint64_t channel_id, Dict(cmd) *cmd, Dict(cmd_opts) *opts, Arena
   // This also sets the values of ea.cmd, ea.arg, ea.args and ea.arglens.
   build_cmdline_str(&cmdline, &ea, &cmdinfo, args);
   ea.cmdlinep = &cmdline;
+
+  // Check for "++opt=val" argument.
+  if (ea.argt & EX_ARGOPT) {
+    while (ea.arg[0] == '+' && ea.arg[1] == '+') {
+      char *orig_arg = ea.arg;
+      int result = getargopt(&ea);
+      VALIDATE_S(result != FAIL || is_cmd_ni(ea.cmdidx), "argument ", orig_arg, {
+        goto end;
+      });
+    }
+  }
+
+  // Check for "+command" argument.
+  if ((ea.argt & EX_CMDARG) && !ea.usefilter) {
+    ea.do_ecmd_cmd = getargcmd(&ea.arg);
+  }
 
   garray_T capture_local;
   const int save_msg_silent = msg_silent;

@@ -795,7 +795,6 @@ static uint8_t *command_line_enter(int firstc, int count, int indent, bool clear
   }
 
   setmouse();
-  setcursor();
 
   s->cmdline_type = firstc > 0 ? firstc : '-';
   Error err = ERROR_INIT;
@@ -3008,10 +3007,9 @@ static int cmd_startcol(void)
 int cmd_screencol(int bytepos)
 {
   int m;  // maximum column
-
   int col = cmd_startcol();
   if (KeyTyped) {
-    m = Columns * Rows;
+    m = cmdline_win ? cmdline_win->w_view_width * cmdline_win->w_view_height : Columns * Rows;
     if (m < 0) {        // overflow, Columns or Rows at weird value
       m = MAXCOL;
     }

@@ -109,6 +109,15 @@ function TSHighlighter.new(tree, opts)
   end
 
   tree:register_cbs({
+    on_bytes = function(buf)
+      -- Clear conceal_lines marks whenever the buffer text changes. Marks are added
+      -- back as either the _conceal_line or on_win callback comes across them.
+      local hl = TSHighlighter.active[buf]
+      if hl and next(hl._conceal_checked) then
+        api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+        hl._conceal_checked = {}
+      end
+    end,
     on_changedtree = function(...)
       self:on_changedtree(...)
     end,
@@ -131,6 +140,7 @@ function TSHighlighter.new(tree, opts)
   self.redraw_count = 0
   self._conceal_checked = {}
   self._queries = {}
+  self._highlight_states = {}
 
   -- Queries for a specific language can be overridden by a custom
   -- string query... if one is not provided it will be looked up by file.
@@ -312,7 +322,7 @@ end
 ---@param on_spell boolean
 ---@param on_conceal boolean
 local function on_line_impl(self, buf, line, on_spell, on_conceal)
-  self._conceal_checked[line] = true
+  self._conceal_checked[line] = self._conceal_line and true or nil
   self:for_each_highlight_state(function(state)
     local root_node = state.tstree:root()
     local root_start_row, _, root_end_row, _ = root_node:range()
@@ -452,42 +462,46 @@ function TSHighlighter._on_conceal_line(_, _, buf, row)
 end
 
 ---@private
---- Clear conceal_lines marks whenever we redraw for a buffer change. Marks are
---- added back as either the _conceal_line or on_win callback comes across them.
-function TSHighlighter._on_buf(_, buf)
-  local self = TSHighlighter.active[buf]
-  if not self or not self._conceal_line then
-    return
-  end
-
-  api.nvim_buf_clear_namespace(buf, ns, 0, -1)
-  self._conceal_checked = {}
-end
-
----@private
 ---@param buf integer
 ---@param topline integer
 ---@param botline integer
-function TSHighlighter._on_win(_, _, buf, topline, botline)
+function TSHighlighter._on_win(_, win, buf, topline, botline)
   local self = TSHighlighter.active[buf]
-  if not self or self.parsing then
+  if not self then
     return false
   end
-  self.parsing = self.tree:parse({ topline, botline + 1 }, function(_, trees)
-    if trees and self.parsing then
-      self.parsing = false
-      api.nvim__redraw({ buf = buf, valid = false, flush = false })
-    end
-  end) == nil
-  self.redraw_count = self.redraw_count + 1
-  self:prepare_highlight_states(topline, botline)
+  self.parsing = self.parsing
+    or nil
+      == self.tree:parse({ topline, botline + 1 }, function(_, trees)
+        if trees and self.parsing then
+          self.parsing = false
+          api.nvim__redraw({ win = win, valid = false, flush = false })
+        end
+      end)
+  if not self.parsing then
+    self.redraw_count = self.redraw_count + 1
+    self:prepare_highlight_states(topline, botline)
+  else
+    self:for_each_highlight_state(function(state)
+      -- TODO(ribru17): Inefficient. Eventually all marks should be applied in on_buf, and all
+      -- non-folded ranges of each open window should be merged, and iterators should only be
+      -- created over those regions. This would also fix #31777.
+      --
+      -- Currently this is not possible because the parser discards previously parsed injection
+      -- trees upon parsing a different region.
+      --
+      -- It would also be nice if rather than re-querying extmarks for old trees, we could tell the
+      -- decoration provider to not clear previous ephemeral marks for this redraw cycle.
+      state.iter = nil
+      state.next_row = 0
+    end)
+  end
   return #self._highlight_states > 0
 end
 
 api.nvim_set_decoration_provider(ns, {
   on_win = TSHighlighter._on_win,
   on_line = TSHighlighter._on_line,
-  on_buf = TSHighlighter._on_buf,
   _on_spell_nav = TSHighlighter._on_spell_nav,
   _on_conceal_line = TSHighlighter._on_conceal_line,
 })

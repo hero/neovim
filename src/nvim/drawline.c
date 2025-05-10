@@ -1475,7 +1475,9 @@ int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow, int col_rows, b
                         ? (startrow == 0 ? wp->w_skipcol : 0)
                         : wp->w_leftcol;
 
-  if (start_col > 0 && col_rows == 0) {
+  if (has_foldtext) {
+    wlv.vcol = start_col;
+  } else if (start_col > 0 && col_rows == 0) {
     char *prev_ptr = ptr;
     CharSize cs = { 0 };
 
@@ -1518,12 +1520,14 @@ int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow, int col_rows, b
     // - 'cuc' is set, or
     // - 'colorcolumn' is set, or
     // - 'virtualedit' is set, or
-    // - the visual mode is active,
+    // - the visual mode is active, or
+    // - drawing a fold
     // the end of the line may be before the start of the displayed part.
     if (wlv.vcol < start_col && (wp->w_p_cuc
                                  || wlv.color_cols
                                  || virtual_active(wp)
-                                 || (VIsual_active && wp->w_buffer == curwin->w_buffer))) {
+                                 || (VIsual_active && wp->w_buffer == curwin->w_buffer)
+                                 || has_fold)) {
       wlv.vcol = start_col;
     }
 
@@ -1935,6 +1939,7 @@ int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow, int col_rows, b
       wlv.n_extra = (int)strlen(wlv.p_extra);
 
       if (wlv.p_extra != buf_fold) {
+        assert(foldtext_free == NULL);
         foldtext_free = wlv.p_extra;
       }
       wlv.sc_extra = NUL;
@@ -2826,7 +2831,6 @@ int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow, int col_rows, b
         curwin->w_cline_height = wlv.row - startrow;
         curwin->w_cline_folded = has_fold;
         curwin->w_valid |= (VALID_CHEIGHT|VALID_CROW);
-        conceal_cursor_used = conceal_cursor_line(curwin);
       }
 
       break;
@@ -3026,12 +3030,12 @@ end_check:
             || (wp->w_p_list && wp->w_p_lcs_chars.eol != NUL && lcs_eol_todo)
             || (wlv.n_extra != 0 && (wlv.sc_extra != NUL || *wlv.p_extra != NUL))
             || (may_have_inline_virt && has_more_inline_virt(&wlv, ptr - line)))) {
+      int grid_width = wp->w_grid.target->cols;
       const bool wrap = is_wrapped                      // Wrapping enabled (not a folded line).
                         && wlv.filler_todo <= 0         // Not drawing diff filler lines.
                         && lcs_eol_todo                 // Haven't printed the lcs_eol character.
                         && wlv.row != endrow - 1        // Not the last line being displayed.
-                        && (view_width == Columns       // Window spans the width of the screen,
-                            || wp->w_grid_alloc.chars)  // or has dedicated grid.
+                        && view_width == grid_width     // Window spans the width of its grid.
                         && !wp->w_p_rl;                 // Not right-to-left.
 
       int draw_col = wlv.col - wlv.boguscols;

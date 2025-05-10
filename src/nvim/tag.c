@@ -740,7 +740,7 @@ void do_tag(char *tag, int type, int count, int forceit, bool verbose)
         } else {
           give_warning(IObuff, ic);
         }
-        if (ic && !msg_scrolled && msg_silent == 0) {
+        if (ic && !msg_scrolled && msg_silent == 0 && !ui_has(kUIMessages)) {
           ui_flush();
           os_delay(1007, true);
         }
@@ -1502,7 +1502,8 @@ static bool findtags_in_help_init(findtags_state_T *st)
 /// Use the function set in 'tagfunc' (if configured and enabled) to get the
 /// tags.
 /// Return OK if at least 1 tag has been successfully found, NOTDONE if the
-/// 'tagfunc' is not used or the 'tagfunc' returns v:null and FAIL otherwise.
+/// 'tagfunc' is not used, still executing or the 'tagfunc' returned v:null and
+/// FAIL otherwise.
 static int findtags_apply_tfu(findtags_state_T *st, char *pat, char *buf_ffname)
 {
   const bool use_tfu = ((st->flags & TAG_NO_TAGFUNC) == 0);
@@ -2965,7 +2966,7 @@ static int jumpto_tag(const char *lbuf_arg, int forceit, bool keep_help)
           // is set and match found while ignoring case.
           if (found == 2 || !save_p_ic) {
             msg(_("E435: Couldn't find tag, just guessing!"), 0);
-            if (!msg_scrolled && msg_silent == 0) {
+            if (!msg_scrolled && msg_silent == 0 && !ui_has(kUIMessages)) {
               ui_flush();
               os_delay(1010, true);
             }

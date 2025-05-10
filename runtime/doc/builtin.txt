@@ -1263,6 +1263,56 @@ complete_info([{what}])                                        *complete_info()*
                 Return: ~
                   (`table`)
 
+complete_match([{lnum}, {col}])                               *complete_match()*
+		Searches backward from the given position and returns a List
+		of matches according to the 'isexpand' option. When no
+		arguments are provided, uses the current cursor position.
+
+		Each match is represented as a List containing
+		[startcol, trigger_text] where:
+		- startcol: column position where completion should start,
+		  or -1 if no trigger position is found. For multi-character
+		  triggers, returns the column of the first character.
+		- trigger_text: the matching trigger string from 'isexpand',
+		  or empty string if no match was found or when using the
+		  default 'iskeyword' pattern.
+
+		When 'isexpand' is empty, uses the 'iskeyword' pattern
+		"\k\+$" to find the start of the current keyword.
+
+		Examples: >vim
+		  set isexpand=.,->,/,/*,abc
+		  func CustomComplete()
+		    let res = complete_match()
+		    if res->len() == 0 | return | endif
+		    let [col, trigger] = res[0]
+		    let items = []
+		    if trigger == '/*'
+		      let items = ['/** */']
+		    elseif trigger == '/'
+		      let items = ['/*! */', '// TODO:', '// fixme:']
+		    elseif trigger == '.'
+		      let items = ['length()']
+		    elseif trigger =~ '^\->'
+		      let items = ['map()', 'reduce()']
+		    elseif trigger =~ '^\abc'
+		      let items = ['def', 'ghk']
+		    endif
+		    if items->len() > 0
+		      let startcol = trigger =~ '^/' ? col : col + len(trigger)
+		      call complete(startcol, items)
+		    endif
+		  endfunc
+		  inoremap <Tab> <Cmd>call CustomComplete()<CR>
+<
+
+                Parameters: ~
+                  • {lnum} (`integer?`)
+                  • {col} (`integer?`)
+
+                Return: ~
+                  (`table`)
+
 confirm({msg} [, {choices} [, {default} [, {type}]]])                *confirm()*
 		confirm() offers the user a dialog, from which a choice can be
 		made.  It returns the number of the choice.  For the first
@@ -2407,7 +2457,7 @@ finddir({name} [, {path} [, {count}]])                               *finddir()*
                   • {count} (`integer?`)
 
                 Return: ~
-                  (`any`)
+                  (`string|string[]`)
 
 findfile({name} [, {path} [, {count}]])                             *findfile()*
 		Just like |finddir()|, but find a file instead of a directory.
@@ -2420,10 +2470,10 @@ findfile({name} [, {path} [, {count}]])                             *findfile()*
                 Parameters: ~
                   • {name} (`string`)
                   • {path} (`string?`)
-                  • {count} (`any?`)
+                  • {count} (`integer?`)
 
                 Return: ~
-                  (`any`)
+                  (`string|string[]`)
 
 flatten({list} [, {maxdepth}])                                       *flatten()*
 		Flatten {list} up to {maxdepth} levels.  Without {maxdepth}
@@ -3267,7 +3317,7 @@ getcharsearch()                                                *getcharsearch()*
                 Return: ~
                   (`table`)
 
-getcharstr([{expr}])                                              *getcharstr()*
+getcharstr([{expr} [, {opts}]])                                   *getcharstr()*
 		The same as |getchar()|, except that this always returns a
 		String, and "number" isn't allowed in {opts}.
 
@@ -8892,6 +8942,8 @@ setcursorcharpos({list})
 			call cursor(4, 3)
 <		positions the cursor on the first character '여'.
 
+		Returns 0 when the position could be set, -1 otherwise.
+
                 Parameters: ~
                   • {list} (`integer[]`)
 
@@ -12056,7 +12108,7 @@ winlayout([{tabnr}])                                               *winlayout()*
                   • {tabnr} (`integer?`)
 
                 Return: ~
-                  (`any[]`)
+                  (`vim.fn.winlayout.ret`)
 
 winline()                                                            *winline()*
 		The result is a Number, which is the screen line of the cursor

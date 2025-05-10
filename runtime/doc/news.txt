@@ -70,7 +70,7 @@ HIGHLIGHTS
 
 LSP
 
-• todo
+• `root_markers` in |vim.lsp.Config| can now be ordered by priority.
 
 LUA
 
@@ -106,6 +106,17 @@ API
 • |nvim_win_text_height()| can limit the lines checked when a certain
   `max_height` is reached, and returns the `end_row` and `end_vcol` for which
   `max_height` or the calculated height is reached.
+• |vim.secure.read()| now returns `true` for trusted directories. Previously
+  it would return `nil`, which made it impossible to tell if the directory was
+  actually trusted.
+• Added |vim.lsp.is_enabled()| to check if a given LSP config has been enabled
+  by |vim.lsp.enable()|.
+
+BUILD
+
+• A Zig-based build system has been added as an alternative to CMake. It is
+  currently limited in functionality, and CMake remains the recommended option
+  for the time being.
 
 DEFAULTS
 
@@ -141,6 +152,7 @@ LUA
 
 • Lua type annotations for `vim.uv`.
 • |vim.hl.range()| now allows multiple timed highlights.
+• |vim.tbl_extend()| and |vim.tbl_deep_extend()| now accept a function behavior argument.
 
 OPTIONS
 
@@ -169,7 +181,8 @@ STARTUP
 
 TERMINAL
 
-• todo
+• |nvim_open_term()| can be called with a non-empty buffer. The buffer
+  contents are piped to the PTY and displayed as terminal output.
 
 TREESITTER
 
@@ -183,6 +196,11 @@ UI
 
 • |:checkhealth| shows a summary in the header for every healthcheck.
 • |ui-multigrid| provides composition information and absolute coordinates.
+• `vim._extui` provides an experimental commandline and message UI intended to
+  replace the message grid in the TUI.
+• Error messages are more concise:
+  • "Error detected while processing:" changed to "Error in:".
+  • "Error executing Lua:" changed to "Lua:".
 
 VIMSCRIPT
 
@@ -193,6 +211,7 @@ CHANGED FEATURES                                                 *news-changed*
 
 These existing features changed their behavior.
 
+• 'smartcase' applies to completion filtering.
 • 'spellfile' location defaults to `stdpath("data").."/site/spell/"` instead of
   the first writable directory in 'runtimepath'.
 • |vim.version.range()| doesn't exclude `to` if it is equal to `from`.

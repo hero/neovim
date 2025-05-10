@@ -241,7 +241,7 @@ set(STYLUA_DIRS runtime scripts src test contrib)
 add_glob_target(
   TARGET lintlua-luacheck
   COMMAND $<TARGET_FILE:nvim_bin>
-  FLAGS -ll ${PROJECT_SOURCE_DIR}/test/lua_runner.lua ${CMAKE_BINARY_DIR}/usr luacheck -q
+  FLAGS -ll ${PROJECT_SOURCE_DIR}/test/lua_runner.lua ${CMAKE_BINARY_DIR}/usr/share/lua/5.1 luacheck -q
   GLOB_DIRS runtime scripts src test
   GLOB_PAT *.lua
   TOUCH_STRATEGY PER_DIR)
@@ -281,7 +281,15 @@ add_glob_target(
   GLOB_DIRS ${STYLUA_DIRS}
   GLOB_PAT *.lua
   TOUCH_STRATEGY PER_DIR)
-
+# Special handling of some files (which are ignored in .styluaignore).
+# Workaround because stylua doesn't(?) support file-specific settings.
+add_custom_target(formatlua2
+  COMMAND ${STYLUA_PRG} --config-path "${PROJECT_SOURCE_DIR}/.stylua2.toml"
+    "${PROJECT_SOURCE_DIR}/test/functional/ui/decorations_spec.lua"
+    "${PROJECT_SOURCE_DIR}/test/functional/ui/float_spec.lua"
+    "${PROJECT_SOURCE_DIR}/test/functional/ui/multigrid_spec.lua"
+)
+add_dependencies(formatlua formatlua2)
 add_custom_target(format)
 add_dependencies(format formatc formatlua)
 

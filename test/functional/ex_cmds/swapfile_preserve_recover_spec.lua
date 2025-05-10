@@ -169,7 +169,8 @@ pcall(vim.cmd.edit, 'Xtest_swapredraw.lua')
     exec(init)
     command('edit! ' .. testfile)
     command('preserve')
-    local nvim2 = n.new_session(true, { args = { '--clean', '--embed' }, merge = false })
+    local args2 = { '--clean', '--embed', '--cmd', n.runtime_set }
+    local nvim2 = n.new_session(true, { args = args2, merge = false })
     set_session(nvim2)
     local screen2 = Screen.new(100, 40)
     screen2:add_extra_attr_ids({
@@ -450,8 +451,8 @@ pcall(vim.cmd.edit, 'Xtest_swapredraw.lua')
       screen:expect({
         any = table.concat({
           pesc('{2:E325: ATTENTION}'),
-          'file name: .*Xswaptest',
-          'process ID: %d* %(STILL RUNNING%)',
+          '\n        process ID: %d* %(STILL RUNNING%)',
+          '\nWhile opening file "Xswaptest"',
           pesc('{1:[O]pen Read-Only, (E)dit anyway, (R)ecover, (Q)uit, (A)bort: }^'),
         }, '.*'),
       })

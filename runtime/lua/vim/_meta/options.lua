@@ -2345,7 +2345,7 @@ vim.bo.ft = vim.bo.filetype
 ---   lastline	'@'		'display' contains lastline/truncate
 ---   trunc		'>'		truncated text in the
 --- 				`ins-completion-menu`.
----   truncrl	'<'		same as "trunc' in 'rightleft' mode
+---   truncrl	'<'		same as "trunc" in 'rightleft' mode
 ---
 --- Any one that is omitted will fall back to the default.
 ---
@@ -2363,9 +2363,8 @@ vim.bo.ft = vim.bo.filetype
 ---     set fillchars=stl:\ ,stlnc:\ ,vert:│,fold:·,diff:-
 --- ```
 ---
---- For the "stl", "stlnc", "foldopen", "foldclose" and "foldsep" items
---- single-byte and multibyte characters are supported.  But double-width
---- characters are not supported. `E1512`
+--- All items support single-byte and multibyte characters.  But
+--- double-width characters are not supported. `E1512`
 ---
 --- The highlighting used for these items:
 ---   item		highlight group ~
@@ -3437,6 +3436,31 @@ vim.o.infercase = false
 vim.o.inf = vim.o.infercase
 vim.bo.infercase = vim.o.infercase
 vim.bo.inf = vim.bo.infercase
+
+--- Defines characters and patterns for completion in insert mode.  Used
+--- by the `complete_match()` function to determine the starting position
+--- for completion.  This is a comma-separated list of triggers.  Each
+--- trigger can be:
+--- - A single character like "." or "/"
+--- - A sequence of characters like "->", "/*", or "/**"
+---
+--- Note: Use "\\," to add a literal comma as trigger character, see
+--- `option-backslash`.
+---
+--- Examples:
+---
+--- ```vim
+---     set isexpand=.,->,/*,\\,
+--- ```
+---
+---
+--- @type string
+vim.o.isexpand = ""
+vim.o.ise = vim.o.isexpand
+vim.bo.isexpand = vim.o.isexpand
+vim.bo.ise = vim.bo.isexpand
+vim.go.isexpand = vim.o.isexpand
+vim.go.ise = vim.go.isexpand
 
 --- The characters specified by this option are included in file names and
 --- path names.  Filenames are used for commands like "gf", "[i" and in
@@ -6059,9 +6083,11 @@ vim.wo.scl = vim.wo.signcolumn
 --- Override the 'ignorecase' option if the search pattern contains upper
 --- case characters.  Only used when the search pattern is typed and
 --- 'ignorecase' option is on.  Used for the commands "/", "?", "n", "N",
---- ":g" and ":s".  Not used for "*", "#", "gd", tag search, etc.  After
---- "*" and "#" you can make 'smartcase' used by doing a "/" command,
---- recalling the search pattern from history and hitting <Enter>.
+--- ":g" and ":s" and when filtering matches for the completion menu
+--- `compl-states`.
+--- Not used for "*", "#", "gd", tag search, etc.  After "*" and "#" you
+--- can make 'smartcase' used by doing a "/" command, recalling the search
+--- pattern from history and hitting <Enter>.
 ---
 --- @type boolean
 vim.o.smartcase = false
@@ -7012,7 +7038,8 @@ vim.bo.tc = vim.bo.tagcase
 vim.go.tagcase = vim.o.tagcase
 vim.go.tc = vim.go.tagcase
 
---- This option specifies a function to be used to perform tag searches.
+--- This option specifies a function to be used to perform tag searches
+--- (including `taglist()`).
 --- The function gets the tag pattern and should return a List of matching
 --- tags.  See `tag-function` for an explanation of how to write the
 --- function and an example.  The value can be the name of a function, a
@@ -7854,8 +7881,8 @@ vim.go.wmnu = vim.go.wildmenu
 --- ```vim
 --- 	set wildmode=noselect:full
 --- ```
---- Show 'wildmenu' without completing or selecting on first press
---- Cycle full matches on second press
+--- First press: show 'wildmenu' without completing or selecting
+--- Second press: cycle full matches
 ---
 --- ```vim
 --- 	set wildmode=noselect:lastused,full

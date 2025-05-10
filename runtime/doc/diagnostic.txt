@@ -269,6 +269,26 @@ DiagnosticVirtualTextHint
 DiagnosticVirtualTextOk
     Used for "Ok" diagnostic virtual text.
 
+                                            *hl-DiagnosticVirtualLinesError*
+DiagnosticVirtualLinesError
+    Used for "Error" diagnostic virtual lines.
+
+                                            *hl-DiagnosticVirtualLinesWarn*
+DiagnosticVirtualLinesWarn
+    Used for "Warn" diagnostic virtual lines.
+
+                                            *hl-DiagnosticVirtualLinesInfo*
+DiagnosticVirtualLinesInfo
+    Used for "Info" diagnostic virtual lines.
+
+                                            *hl-DiagnosticVirtualLinesHint*
+DiagnosticVirtualLinesHint
+    Used for "Hint" diagnostic virtual lines.
+
+                                                *hl-DiagnosticVirtualLinesOk*
+DiagnosticVirtualLinesOk
+    Used for "Ok" diagnostic virtual lines.
+
                                                 *hl-DiagnosticUnderlineError*
 DiagnosticUnderlineError
     Used to underline "Error" diagnostics.
@@ -445,13 +465,9 @@ Lua module: vim.diagnostic                                    *diagnostic-api*
                        file or not. Similar to 'wrapscan'.
       • {severity}?    (`vim.diagnostic.SeverityFilter`) See
                        |diagnostic-severity|.
-      • {float}?       (`boolean|vim.diagnostic.Opts.Float`, default: `false`)
-                       If `true`, call |vim.diagnostic.open_float()| after
-                       moving. If a table, pass the table as the {opts}
-                       parameter to |vim.diagnostic.open_float()|. Unless
-                       overridden, the float will show diagnostics at the new
-                       cursor position (as if "cursor" were passed to the
-                       "scope" option).
+      • {on_jump}?     (`fun(diagnostic:vim.Diagnostic?, bufnr:integer)`)
+                       Optional callback invoked with the diagnostic that was
+                       jumped to.
       • {winid}?       (`integer`, default: `0`) Window ID
 
 *vim.diagnostic.NS*
@@ -624,8 +640,12 @@ Lua module: vim.diagnostic                                    *diagnostic-api*
       • {severity}?           (`vim.diagnostic.SeverityFilter`) Only show
                               virtual text for diagnostics matching the given
                               severity |diagnostic-severity|
-      • {current_line}?       (`boolean`) Only show diagnostics for the
-                              current line. (default `false`)
+      • {current_line}?       (`boolean`) Show or hide diagnostics based on
+                              the current cursor line. If `true`, only
+                              diagnostics on the current cursor line are
+                              shown. If `false`, all diagnostics are shown
+                              except on the current cursor line. If `nil`, all
+                              diagnostics are shown. (default `nil`)
       • {source}?             (`boolean|"if_many"`) Include the diagnostic
                               source in virtual text. Use `'if_many'` to only
                               show sources if there is more than one

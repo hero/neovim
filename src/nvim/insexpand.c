@@ -492,13 +492,14 @@ bool check_compl_option(bool dict_opt)
          && *curbuf->b_p_tsrfu == NUL && *p_tsrfu == NUL)) {
     ctrl_x_mode = CTRL_X_NORMAL;
     edit_submode = NULL;
-    msg((dict_opt ? _("'dictionary' option is empty") : _("'thesaurus' option is empty")),
-        HLF_E);
+    emsg(dict_opt ? _("'dictionary' option is empty") : _("'thesaurus' option is empty"));
     if (emsg_silent == 0 && !in_assert_fails) {
       vim_beep(kOptBoFlagComplete);
       setcursor();
-      ui_flush();
-      os_delay(2004, false);
+      if (!ui_has(kUIMessages)) {
+        ui_flush();
+        os_delay(2004, false);
+      }
     }
     return false;
   }
@@ -819,8 +820,7 @@ static inline void free_cptext(char *const *const cptext)
 /// Returns true if matches should be sorted based on proximity to the cursor.
 static bool is_nearest_active(void)
 {
-  unsigned flags = get_cot_flags();
-  return (flags & kOptCotFlagNearest) && !(flags & kOptCotFlagFuzzy);
+  return (get_cot_flags() & (kOptCotFlagNearest|kOptCotFlagFuzzy)) == kOptCotFlagNearest;
 }
 
 /// Repositions a match in the completion list based on its proximity score.
@@ -983,9 +983,7 @@ static int ins_compl_add(char *const str, int len, char *const fname, char *cons
   match->cp_user_kind_hlattr = user_hl ? user_hl[1] : -1;
 
   if (cptext != NULL) {
-    int i;
-
-    for (i = 0; i < CPT_COUNT; i++) {
+    for (int i = 0; i < CPT_COUNT; i++) {
       if (cptext[i] == NULL) {
         continue;
       }
@@ -1391,6 +1389,12 @@ static int ins_compl_build_pum(void)
     // set the cp_score for later comparisons.
     if (fuzzy_filter && compl_leader.data != NULL && compl_leader.size > 0) {
       comp->cp_score = fuzzy_match_str(comp->cp_str.data, compl_leader.data);
+    }
+
+    // Apply 'smartcase' behavior during normal mode
+    if (ctrl_x_mode_normal() && !p_inf && compl_leader.data
+        && !ignorecase(compl_leader.data) && !fuzzy_filter) {
+      comp->cp_flags &= ~CP_ICASE;
     }
 
     if (!match_at_original_text(comp)
@@ -3081,6 +3085,81 @@ void f_complete_check(typval_T *argvars, typval_T *rettv, EvalFuncData fptr)
   RedrawingDisabled = saved;
 }
 
+/// Add match item to the return list.
+static void add_match_to_list(typval_T *rettv, char *str, int pos)
+{
+  list_T *match = tv_list_alloc(2);
+  tv_list_append_number(match, pos + 1);
+  tv_list_append_string(match, str, -1);
+  tv_list_append_list(rettv->vval.v_list, match);
+}
+
+/// "complete_match()" function
+void f_complete_match(typval_T *argvars, typval_T *rettv, EvalFuncData fptr)
+{
+  tv_list_alloc_ret(rettv, kListLenUnknown);
+
+  char *ise = curbuf->b_p_ise[0] != NUL ? curbuf->b_p_ise : p_ise;
+
+  linenr_T lnum = 0;
+  colnr_T col = 0;
+  char part[MAXPATHL];
+  if (argvars[0].v_type == VAR_UNKNOWN) {
+    lnum = curwin->w_cursor.lnum;
+    col = curwin->w_cursor.col;
+  } else if (argvars[1].v_type == VAR_UNKNOWN) {
+    emsg(_(e_invarg));
+    return;
+  } else {
+    lnum = (linenr_T)tv_get_number(&argvars[0]);
+    col = (colnr_T)tv_get_number(&argvars[1]);
+    if (lnum < 1 || lnum > curbuf->b_ml.ml_line_count) {
+      semsg(_(e_invalid_line_number_nr), lnum);
+      return;
+    }
+    if (col < 1 || col > ml_get_buf_len(curbuf, lnum)) {
+      semsg(_(e_invalid_column_number_nr), col + 1);
+      return;
+    }
+  }
+
+  char *line = ml_get_buf(curbuf, lnum);
+  if (line == NULL) {
+    return;
+  }
+
+  char *before_cursor = xstrnsave(line, (size_t)col);
+
+  if (ise == NULL || *ise == NUL) {
+    regmatch_T regmatch;
+    regmatch.regprog = vim_regcomp("\\k\\+$", RE_MAGIC);
+    if (regmatch.regprog != NULL) {
+      if (vim_regexec_nl(&regmatch, before_cursor, (colnr_T)0)) {
+        char *trig = xstrnsave(regmatch.startp[0], (size_t)(regmatch.endp[0] - regmatch.startp[0]));
+        int bytepos = (int)(regmatch.startp[0] - before_cursor);
+        add_match_to_list(rettv, trig, bytepos);
+        xfree(trig);
+      }
+      vim_regfree(regmatch.regprog);
+    }
+  } else {
+    char *p = ise;
+    char *cur_end = before_cursor + (int)strlen(before_cursor);
+
+    while (*p != NUL) {
+      size_t len = copy_option_part(&p, part, MAXPATHL, ",");
+      if (len > 0 && (int)len <= col) {
+        if (strncmp(cur_end - len, part, len) == 0) {
+          int bytepos = col - (int)len;
+          add_match_to_list(rettv, part, bytepos);
+        }
+      }
+    }
+  }
+
+  xfree(before_cursor);
+}
+
 /// Return Insert completion mode name string
 static char *ins_compl_mode(void)
 {
@@ -4758,6 +4837,7 @@ static int get_normal_compl_info(char *line, int startcol, colnr_T curs_col)
       }
       startcol -= head_off;
     }
+
     compl_col += ++startcol;
     compl_length = (int)curs_col - startcol;
     if (compl_length == 1) {
@@ -4896,6 +4976,7 @@ static int get_userdefined_compl_info(colnr_T curs_col)
   if (col == -2 || aborting()) {
     return FAIL;
   }
+
   // Return value -3 does the same as -2 and leaves CTRL-X mode.
   if (col == -3) {
     ctrl_x_mode = CTRL_X_NORMAL;
