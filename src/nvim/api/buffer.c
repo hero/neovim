@@ -87,7 +87,7 @@ Integer nvim_buf_line_count(Buffer buffer, Error *err)
   return buf->b_ml.ml_line_count;
 }
 
-/// Activates buffer-update events on a channel, or as Lua callbacks.
+/// Activates |api-buffer-updates| events on a channel, or as Lua callbacks.
 ///
 /// Example (Lua): capture buffer updates in a global `events` variable
 /// (use "vim.print(events)" to see its contents):
@@ -856,7 +856,8 @@ Integer nvim_buf_get_changedtick(Buffer buffer, Error *err)
 /// @param[out]  err   Error details, if any
 /// @returns Array of |maparg()|-like dictionaries describing mappings.
 ///          The "buffer" key holds the associated buffer id.
-ArrayOf(Dict) nvim_buf_get_keymap(Buffer buffer, String mode, Arena *arena, Error *err)
+ArrayOf(DictAs(get_keymap)) nvim_buf_get_keymap(Buffer buffer, String mode, Arena *arena,
+                                                Error *err)
   FUNC_API_SINCE(3)
 {
   buf_T *buf = find_buffer_by_handle(buffer, err);
